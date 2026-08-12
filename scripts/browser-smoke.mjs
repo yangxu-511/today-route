@@ -89,6 +89,34 @@ try {
   const savedAfterReload = await evaluate(`document.body.innerText.includes(${JSON.stringify(testTitle)})`)
   if (!savedAfterReload) throw new Error('刷新后事项丢失')
 
+  const restoredTitle = '备份恢复演练已通过'
+  await evaluate(`(() => {
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      app: '今日航线',
+      data: {
+        version: 1,
+        items: [{
+          id: 'restore-check',
+          title: ${JSON.stringify(restoredTitle)},
+          lane: 'work',
+          horizon: 'today',
+          done: false,
+          createdAt: new Date().toISOString()
+        }],
+        notes: {}
+      }
+    }
+    const input = document.querySelector('[data-import-file]')
+    const transfer = new DataTransfer()
+    transfer.items.add(new File([JSON.stringify(backup)], 'today-route-smoke-backup.json', { type: 'application/json' }))
+    input.files = transfer.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  })()`)
+  await delay(400)
+  const backupRestored = await evaluate(`document.body.innerText.includes(${JSON.stringify(restoredTitle)}) && localStorage.getItem('today-route-state-v1').includes(${JSON.stringify(restoredTitle)})`)
+  if (!backupRestored) throw new Error('备份文件未能通过界面恢复')
+
   await evaluate(`navigator.serviceWorker.ready.then(() => true)`, true)
   await send('Page.reload')
   await delay(500)
@@ -108,6 +136,7 @@ try {
     passed: true,
     viewport,
     persistence: 'passed',
+    backupRestore: 'passed',
     offline: 'passed',
     screenshot: `artifacts/validation/${screenshotName}`,
   }, null, 2))
