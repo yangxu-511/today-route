@@ -4,7 +4,10 @@ import path from 'node:path'
 
 const cdpBase = process.env.CDP_BASE ?? 'http://127.0.0.1:9223'
 const appUrl = process.env.APP_URL ?? 'http://127.0.0.1:4173/'
+const screenshotName = process.env.SCREENSHOT_NAME ?? 'mobile-390.png'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+if (!/^[a-zA-Z0-9._-]+\.png$/.test(screenshotName)) throw new Error('SCREENSHOT_NAME 必须是安全的 PNG 文件名')
 
 const target = await fetch(`${cdpBase}/json/new?${encodeURIComponent(appUrl)}`, { method: 'PUT' }).then((response) => {
   if (!response.ok) throw new Error(`无法创建浏览器页面：${response.status}`)
@@ -99,14 +102,14 @@ try {
   const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
   const artifactDir = path.join(root, 'artifacts', 'validation')
   await mkdir(artifactDir, { recursive: true })
-  await writeFile(path.join(artifactDir, 'mobile-390.png'), Buffer.from(screenshot.data, 'base64'))
+  await writeFile(path.join(artifactDir, screenshotName), Buffer.from(screenshot.data, 'base64'))
 
   console.log(JSON.stringify({
     passed: true,
     viewport,
     persistence: 'passed',
     offline: 'passed',
-    screenshot: 'artifacts/validation/mobile-390.png',
+    screenshot: `artifacts/validation/${screenshotName}`,
   }, null, 2))
 } finally {
   await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }).catch(() => {})
